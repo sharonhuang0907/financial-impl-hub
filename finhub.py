@@ -1,5 +1,4 @@
 import streamlit as st
-import google.generativeai as genai
 from zeep import Client
 import os
 import json
