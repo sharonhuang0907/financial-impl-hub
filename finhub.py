@@ -1,7 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
 from zeep import Client
-from zeep.wsse.username_token import UsernameToken
 import os
 import json
 
