@@ -39,7 +39,7 @@ def connection_modal():
     pwd = st.text_input("Password", type="password")
  
     if st.button("Save & Verify"):
-        if all([host, tenant, user, pwd, gemini_key]):
+        if all([host, tenant, user, pwd]):
             st.session_state.wd_host = host
             st.session_state.wd_tenant = tenant
             st.session_state.wd_user = user
