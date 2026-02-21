@@ -37,42 +37,18 @@ def connection_modal():
     tenant = st.text_input("Tenant Name", value=st.session_state.get('wd_tenant', ''))
     user = st.text_input("ISU Username", value=st.session_state.get('wd_user', ''))
     pwd = st.text_input("Password", type="password")
-    gemini_key = st.text_input("Gemini API Key", type="password", value=st.session_state.get('gemini_key', ''))
-
+ 
     if st.button("Save & Verify"):
         if all([host, tenant, user, pwd, gemini_key]):
             st.session_state.wd_host = host
             st.session_state.wd_tenant = tenant
             st.session_state.wd_user = user
             st.session_state.wd_pass = pwd
-            st.session_state.gemini_key = gemini_key
             st.success("Credentials saved!")
             st.rerun()
-        else:
-            st.error("Please fill in all fields including the Gemini API Key.")
 
-# --- Logic: Gemini AI Extraction ---
-def ai_analyze_request(user_prompt):
-    try:
-        genai.configure(api_key=st.session_state.gemini_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        system_prompt = f"""
-        Extract transaction details from: "{user_prompt}"
-        Return ONLY valid JSON with keys:
-        - transaction_type: (Choose strictly: "Supplier_Invoice", "Miscellaneous_Payment", or "Ad_Hoc_Payment")
-        - amount: (number)
-        - currency: (3-letter code, default USD)
-        - memo: (short string)
-        - supplier: (string or null)
-        """
-        response = model.generate_content(system_prompt)
-        # Clean the response text to ensure it's just JSON
-        clean_json = response.text.replace('```json', '').replace('```', '').strip()
-        return json.loads(clean_json)
-    except Exception as e:
-        st.error(f"AI Analysis failed: {e}")
-        return None
+
+
 
 # --- Logic: Workday SOAP Call ---
 def execute_workday_call(tx_type, extracted_data):
