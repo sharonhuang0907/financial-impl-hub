@@ -1,78 +1,66 @@
 import streamlit as st
+from zeep import Client
+from zeep.wsse.username_token import UsernameToken
+import os
 
-# --- Page Configuration ---
-st.set_page_config(page_title="Financial Implementation Hub", layout="wide")
+# --- Workday Connection Function ---
+def call_workday_api(transaction_type, data):
+    """
+    Connects to Workday and executes the specific Financial Management service.
+    """
+    # 1. Credentials (Pull from Streamlit Secrets or .env)
+    WD_USER = st.secrets["WD_USER"]
+    WD_PASS = st.secrets["WD_PASS"]
+    # Example WSDL URL for Financial Management
+    WSDL_URL = f"https://{st.secrets['WD_HOST']}/ccx/service/{st.secrets['WD_TENANT']}/Financial_Management/v41.0?wsdl"
 
-# --- Custom Styling (The "App Store" Look) ---
-st.markdown("""
-    <style>
-    .app-card {
-        border-radius: 15px;
-        padding: 20px;
-        background-color: #f8f9fa;
-        border: 1px solid #e9ecef;
-        transition: transform 0.2s;
-        height: 100%;
-    }
-    .app-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    .app-title {
-        font-weight: bold;
-        font-size: 1.2rem;
-        margin-bottom: 10px;
-        color: #1f1f1f;
-    }
-    .app-desc {
-        font-size: 0.9rem;
-        color: #6c757d;
-    }
-    </style>
-""", unsafe_allow_html=True)
+    try:
+        # 2. Setup Security and Client
+        auth = UsernameToken(WD_USER, WD_PASS)
+        client = Client(WSDL_URL, wsse=auth)
 
-# --- Sidebar Navigation ---
-st.sidebar.title("🚀 Hub Actions")
-action = st.sidebar.radio(
-    "Go to:",
-    ["Marketplace", "Portfolio Tracking", "Tax Optimization", "Risk Assessment", "Settings"]
-)
+        # 3. Dynamic Service Selection
+        # Maps the AI-identified type to the actual Workday Operation
+        operations = {
+            "Supplier_Invoice": client.service.Submit_Supplier_Invoice,
+            "Miscellaneous_Payment": client.service.Submit_Miscellaneous_Payment,
+            "Ad_Hoc_Payment": client.service.Submit_Ad_Hoc_Payment
+        }
 
-# --- Main Logic ---
-st.title("Financial Implementation Hub")
-st.caption(f"Current View: **{action}**")
+        service_function = operations.get(transaction_type)
+        
+        if not service_function:
+            return {"status": "error", "message": f"Operation {transaction_type} not supported."}
 
-if action == "Marketplace":
-    st.subheader("Implementation Modules")
-    st.write("Select a tool to begin your financial workflow.")
+        # 4. Execute the request
+        # 'data' must be a dictionary matching the Workday XSD structure
+        response = service_function(Request_Data=data)
+        
+        return {"status": "success", "data": response}
 
-    # Grid Layout for App Store feel
-    col1, col2, col3 = st.columns(3)
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
-    with col1:
-        st.markdown("""<div class="app-card">
-            <div class="app-title">📈 Strategy Automator</div>
-            <p class="app-desc">Deploy automated trading logic across multiple brokerage accounts.</p>
-        </div>""", unsafe_allow_html=True)
-        if st.button("Launch Automator", key="btn1"):
-            st.info("Initializing Strategy Automator...")
+# --- UI Implementation ---
+st.title("🚀 Workday Execution Engine")
 
-    with col2:
-        st.markdown("""<div class="app-card">
-            <div class="app-title">🏦 Debt Refinancer</div>
-            <p class="app-desc">Scan for optimal loan restructuring opportunities in real-time.</p>
-        </div>""", unsafe_allow_html=True)
-        if st.button("Scan Rates", key="btn2"):
-            st.info("Scanning market rates...")
+# This button would sit under the AI-generated XML preview
+if st.button("🚀 Execute to Workday Tenant"):
+    with st.spinner("Communicating with Workday..."):
+        
+        # Placeholder data from the AI analysis step
+        mock_data = {
+            "Memo": "Test Payment from Streamlit Hub",
+            "Control_Amount_Total": 500.00,
+            "Currency_Reference": {"ID": {"_value_1": "USD", "type": "Currency_ID"}}
+        }
+        
+        # Replace 'Supplier_Invoice' with the dynamic variable from the AI
+        result = call_workday_api("Supplier_Invoice", mock_data)
 
-    with col3:
-        st.markdown("""<div class="app-card">
-            <div class="app-title">⚖️ ESG Balancer</div>
-            <p class="app-desc">Adjust your portfolio to meet environmental and social governance goals.</p>
-        </div>""", unsafe_allow_html=True)
-        if st.button("Check Balance", key="btn3"):
-            st.info("Calculating ESG score...")
-
-else:
-    st.info(f"The {action} module is currently under development.")
-    st.image("https://via.placeholder.com/800x400.png?text=Module+Preview", use_container_width=True)
+        if result["status"] == "success":
+            st.balloons()
+            st.success("Success! Transaction ID Created.")
+            st.json(result["data"])
+        else:
+            st.error(f"Workday API Error: {result['message']}")
